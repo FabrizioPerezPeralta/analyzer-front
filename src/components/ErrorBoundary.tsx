@@ -9,7 +9,7 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
   error?: Error;
-  componentStack?: string;
+  componentStack?: string | null;
 }
 
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -20,16 +20,17 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    this.setState({ componentStack: info.componentStack });
+    this.setState({ componentStack: info.componentStack ?? undefined });
     console.error("Render error:", error, info);
   }
 
   render() {
     if (this.state.hasError) {
       if (this.props.fallbackRender && this.state.error) {
+        const componentStack = this.state.componentStack ?? undefined;
         return this.props.fallbackRender(
           this.state.error,
-          this.state.componentStack
+          componentStack
         );
       }
 

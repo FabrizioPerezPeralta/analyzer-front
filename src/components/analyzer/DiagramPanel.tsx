@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import ReactFlow, { Background, Controls, MiniMap } from "reactflow";
+import type { Edge, Node } from "reactflow";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { ReactFlowPayload } from "@/types/analyzer";
+import type { ReactFlowNodeData, ReactFlowPayload } from "@/types/analyzer";
 
 interface DiagramPanelProps {
   reactFlow: ReactFlowPayload | null | undefined;
@@ -12,8 +13,15 @@ interface DiagramPanelProps {
 const DiagramPanel = ({ reactFlow, generatedReport }: DiagramPanelProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const nodes = useMemo(() => reactFlow?.nodes ?? [], [reactFlow?.nodes]);
-  const edges = useMemo(() => reactFlow?.edges ?? [], [reactFlow?.edges]);
+  const nodes = useMemo<Node<ReactFlowNodeData>[]>(
+    () =>
+      (reactFlow?.nodes ?? []).map((node) => ({
+        ...node,
+        data: node.data ?? {},
+      })),
+    [reactFlow?.nodes]
+  );
+  const edges = useMemo<Edge[]>(() => reactFlow?.edges ?? [], [reactFlow?.edges]);
   const hasDiagram = nodes.length > 0 || edges.length > 0;
 
   return (
