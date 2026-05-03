@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:5129";
+const API_BASE_URL = "https://back.bdanalyzer.lat";
 
 const parseError = async (response: Response) => {
   const text = await response.text();
