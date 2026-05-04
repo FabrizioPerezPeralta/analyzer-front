@@ -78,6 +78,7 @@ const SplitPaneViewer = () => {
       const response = await refineAnalysis(
         text,
         selectedFixes,
+        result.observations,
         normalizationLevel,
         token
       );

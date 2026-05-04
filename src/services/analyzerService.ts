@@ -7,6 +7,7 @@ export const analyzeSchema = (formData: FormData, token: string) =>
 export const refineAnalysis = (
   originalSchema: string,
   selectedFixes: string[],
+  originalObservations: any[],
   normalizationLevel: string,
   token: string
 ) =>
@@ -15,6 +16,7 @@ export const refineAnalysis = (
     {
       schema: originalSchema,
       fixes: selectedFixes,
+      observations: originalObservations,
       level: normalizationLevel,
     },
     token
