@@ -33,6 +33,7 @@ const SplitPaneViewer = () => {
     setResult,
     setLoading,
     setError,
+    clearSelections,
   } = useAnalyzerStore();
 
   const token = useAuthStore((state) => state.token);
@@ -52,66 +53,46 @@ const SplitPaneViewer = () => {
   }, [result]);
 
   const handleToggle = useCallback(
-    async (id: string) => {
+    (id: string) => {
       toggleObservation(id);
-
-      if (!token) return;
-
-      // Calculate next selected IDs (since toggleObservation is async in terms of state update)
-      const isCurrentlySelected = selectedObservationIds.includes(id);
-      const nextSelectedIds = isCurrentlySelected
-        ? selectedObservationIds.filter((item) => item !== id)
-        : [...selectedObservationIds, id];
-
-      const selectedFixes = observations
-        .filter((obs) => nextSelectedIds.includes(obs.id))
-        .map((obs) => obs.proposedFixSql)
-        .filter(Boolean);
-
-      setLoading(true);
-      try {
-        const response = await refineAnalysis(
-          text,
-          selectedFixes,
-          normalizationLevel,
-          token
-        );
-        setResult(response);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Refinement failed");
-      } finally {
-        setLoading(false);
-      }
     },
-    [
-      toggleObservation,
-      selectedObservationIds,
-      observations,
-      text,
-      normalizationLevel,
-      token,
-      setResult,
-      setLoading,
-      setError,
-    ]
+    [toggleObservation]
   );
 
-  const handleGenerate = () => {
-    if (!result) {
+  const handleGenerate = async () => {
+    if (!result || !token) {
       return;
     }
 
-    const selected = observations.filter((observation) =>
-      selectedObservationIds.includes(observation.id)
-    );
-    const sql = selected
-      .map((observation) => observation.proposedFixSql)
-      .filter(Boolean)
-      .join("\n\n");
+    const selectedFixes = observations
+      .filter((obs) => selectedObservationIds.includes(obs.id))
+      .map((obs) => obs.proposedFixSql)
+      .filter(Boolean);
 
-    setGeneratedReport(sql);
-    if (sql) {
-      void navigator.clipboard.writeText(sql);
+    if (selectedFixes.length === 0) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await refineAnalysis(
+        text,
+        selectedFixes,
+        normalizationLevel,
+        token
+      );
+      setResult(response);
+      clearSelections();
+
+      const sql = selectedFixes.join("\n\n");
+      setGeneratedReport(sql);
+      if (sql) {
+        void navigator.clipboard.writeText(sql);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Refinement failed");
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -68,6 +68,12 @@ const UploadPanel = () => {
     setError(null);
 
     try {
+      let finalSchemaText = currentText;
+      if (currentFile) {
+        finalSchemaText = await currentFile.text();
+        setText(finalSchemaText);
+      }
+
       const formData = new FormData();
       if (currentText) {
         formData.append("text", currentText);
