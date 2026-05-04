@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import {
   Panel,
   PanelGroup,
@@ -8,6 +8,8 @@ import ActionBar from "@/components/analyzer/ActionBar";
 import DiagramPanel from "@/components/analyzer/DiagramPanel";
 import ObservationList from "@/components/analyzer/ObservationList";
 import { useAnalyzerStore } from "@/store/analyzerStore";
+import { useAuthStore } from "@/store/authStore";
+import { refineAnalysis } from "@/services/analyzerService";
 import type { Observation } from "@/types/analyzer";
 
 const severityRank: Record<string, number> = {
@@ -26,7 +28,14 @@ const SplitPaneViewer = () => {
     setGeneratedReport,
     generatedReport,
     reset,
+    text,
+    normalizationLevel,
+    setResult,
+    setLoading,
+    setError,
   } = useAnalyzerStore();
+
+  const token = useAuthStore((state) => state.token);
 
   const observations = useMemo(() => {
     if (!result) {
@@ -41,6 +50,51 @@ const SplitPaneViewer = () => {
         return rankA - rankB;
       });
   }, [result]);
+
+  const handleToggle = useCallback(
+    async (id: string) => {
+      toggleObservation(id);
+
+      if (!token) return;
+
+      // Calculate next selected IDs (since toggleObservation is async in terms of state update)
+      const isCurrentlySelected = selectedObservationIds.includes(id);
+      const nextSelectedIds = isCurrentlySelected
+        ? selectedObservationIds.filter((item) => item !== id)
+        : [...selectedObservationIds, id];
+
+      const selectedFixes = observations
+        .filter((obs) => nextSelectedIds.includes(obs.id))
+        .map((obs) => obs.proposedFixSql)
+        .filter(Boolean);
+
+      setLoading(true);
+      try {
+        const response = await refineAnalysis(
+          text,
+          selectedFixes,
+          normalizationLevel,
+          token
+        );
+        setResult(response);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Refinement failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      toggleObservation,
+      selectedObservationIds,
+      observations,
+      text,
+      normalizationLevel,
+      token,
+      setResult,
+      setLoading,
+      setError,
+    ]
+  );
 
   const handleGenerate = () => {
     if (!result) {
@@ -89,7 +143,7 @@ const SplitPaneViewer = () => {
                 <ObservationList
                   observations={observations}
                   selectedIds={selectedObservationIds}
-                  onToggle={toggleObservation}
+                  onToggle={handleToggle}
                 />
               </div>
             </div>

@@ -1,5 +1,7 @@
 export type Severity = "Critical" | "High" | "Medium" | "Low" | "Info" | string;
 
+export type NormalizationLevel = "1NF" | "2NF" | "3NF" | "4NF";
+
 export interface Observation {
   severity: Severity;
   description: string;

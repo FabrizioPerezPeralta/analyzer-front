@@ -11,12 +11,15 @@ import { useAnalyzerStore } from "@/store/analyzerStore";
 const UploadPanel = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [inputMethod, setInputMethod] = useState<"file" | "sql">("file");
   const token = useAuthStore((state) => state.token);
   const {
     text,
     file,
+    normalizationLevel,
     setText,
     setFile,
+    setNormalizationLevel,
     setResult,
     clearSelections,
     setGeneratedReport,
@@ -30,7 +33,17 @@ const UploadPanel = () => {
 
   const handleFileSelected = (nextFile: File | null) => {
     setFile(nextFile);
+    if (nextFile) {
+      setText("");
+    }
     setError(null);
+  };
+
+  const handleTextChange = (val: string) => {
+    setText(val);
+    if (val.trim()) {
+      setFile(null);
+    }
   };
 
   const handleAnalyze = async () => {
@@ -39,8 +52,15 @@ const UploadPanel = () => {
       return;
     }
 
-    if (!text.trim() && !file) {
-      setError("Provide a SQL file or notes before analyzing.");
+    const currentText = inputMethod === "sql" ? text.trim() : "";
+    const currentFile = inputMethod === "file" ? file : null;
+
+    if (!currentText && !currentFile) {
+      setError(
+        inputMethod === "file"
+          ? "Please upload a SQL file."
+          : "Please paste your SQL code."
+      );
       return;
     }
 
@@ -49,12 +69,13 @@ const UploadPanel = () => {
 
     try {
       const formData = new FormData();
-      if (text.trim()) {
-        formData.append("text", text.trim());
+      if (currentText) {
+        formData.append("text", currentText);
       }
-      if (file) {
-        formData.append("file", file);
+      if (currentFile) {
+        formData.append("file", currentFile);
       }
+      formData.append("normalizationLevel", normalizationLevel);
 
       const response = await analyzeSchema(formData, token);
       clearSelections();
@@ -73,66 +94,130 @@ const UploadPanel = () => {
         <div className="flex flex-col gap-6">
           <div>
             <p className="text-[40px] font-semibold leading-tight">
-              Upload your schema
+              Analyze your schema
             </p>
             <p className="text-[17px] text-ink-muted-48">
-              Drag a .sql or .txt file, add optional notes, and start the audit.
+              Select an input method and the desired normalization level.
             </p>
           </div>
-          <div
-            className={
-              "flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-hairline bg-parchment px-6 py-10 text-center transition" +
-              (isDragging ? " border-primary bg-canvas" : "")
-            }
-            onDragOver={(event) => {
-              event.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setIsDragging(false);
-              const droppedFile = event.dataTransfer.files?.[0] ?? null;
-              if (droppedFile) {
-                handleFileSelected(droppedFile);
-              }
-            }}
-          >
-            <FileUp className="h-8 w-8 text-ink" />
-            <p className="text-[17px]">Drop schema here</p>
-            <p className="text-[14px] text-ink-muted-48">
-              Accepted: .sql, .txt
-            </p>
-            <Button
-              variant="secondary"
-              onClick={() => fileInputRef.current?.click()}
-              type="button"
+
+          <div className="flex border-b border-hairline">
+            <button
+              className={`px-6 py-2 text-[15px] font-medium transition ${
+                inputMethod === "file"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-ink-muted-48 hover:text-ink"
+              }`}
+              onClick={() => {
+                setInputMethod("file");
+                setError(null);
+              }}
             >
-              Browse files
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".sql,.txt"
-              className="hidden"
-              onChange={(event) =>
-                handleFileSelected(event.target.files?.[0] ?? null)
-              }
-            />
+              Upload File
+            </button>
+            <button
+              className={`px-6 py-2 text-[15px] font-medium transition ${
+                inputMethod === "sql"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-ink-muted-48 hover:text-ink"
+              }`}
+              onClick={() => {
+                setInputMethod("sql");
+                setError(null);
+              }}
+            >
+              Paste SQL
+            </button>
           </div>
-          <div className="flex items-center gap-3 text-[14px] text-ink-muted-48">
-            <Paperclip className="h-4 w-4" />
-            <span>{fileLabel}</span>
-          </div>
+
+          {inputMethod === "file" ? (
+            <div className="space-y-4">
+              <div
+                className={
+                  "flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-hairline bg-parchment px-6 py-10 text-center transition" +
+                  (isDragging ? " border-primary bg-canvas" : "")
+                }
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
+                  const droppedFile = event.dataTransfer.files?.[0] ?? null;
+                  if (droppedFile) {
+                    handleFileSelected(droppedFile);
+                  }
+                }}
+              >
+                <FileUp className="h-8 w-8 text-ink" />
+                <p className="text-[17px]">Drop schema here</p>
+                <p className="text-[14px] text-ink-muted-48">
+                  Accepted: .sql, .txt
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={() => fileInputRef.current?.click()}
+                  type="button"
+                >
+                  Browse files
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".sql,.txt"
+                  className="hidden"
+                  onChange={(event) =>
+                    handleFileSelected(event.target.files?.[0] ?? null)
+                  }
+                />
+              </div>
+              <div className="flex items-center gap-3 text-[14px] text-ink-muted-48">
+                <Paperclip className="h-4 w-4" />
+                <span>{fileLabel}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <label className="text-[14px] text-ink-muted-48">
+                Paste your SQL DDL code
+              </label>
+              <Textarea
+                value={text}
+                onChange={(event) => handleTextChange(event.target.value)}
+                placeholder="CREATE TABLE ... "
+                className="min-h-[200px] font-mono text-[13px]"
+              />
+            </div>
+          )}
+
           <div className="space-y-3">
             <label className="text-[14px] text-ink-muted-48">
-              Optional notes or prompt
+              Desired Normalization Level
             </label>
-            <Textarea
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              placeholder="Share constraints, context, or focus areas."
-            />
+            <div className="flex gap-4">
+              {(["1NF", "2NF", "3NF", "BCNF"] as const).map((level) => (
+                <label
+                  key={level}
+                  className={`flex cursor-pointer items-center gap-2 rounded-md border px-4 py-2 transition ${
+                    normalizationLevel === level
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-hairline bg-canvas hover:bg-parchment"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="normalizationLevel"
+                    value={level}
+                    checked={normalizationLevel === level}
+                    onChange={() => setNormalizationLevel(level)}
+                    className="sr-only"
+                  />
+                  <span className="text-[14px] font-medium">{level}</span>
+                </label>
+              ))}
+            </div>
           </div>
           {error ? <p className="text-[14px] text-primary">{error}</p> : null}
           <div className="flex items-center gap-4">
