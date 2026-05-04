@@ -53,6 +53,19 @@ const DiagramPanel = ({ reactFlow, generatedReport }: DiagramPanelProps) => {
     URL.revokeObjectURL(url);
   };
 
+  const downloadSql = () => {
+    if (!generatedReport) return;
+    const blob = new Blob([generatedReport], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "fixes.sql";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex h-full flex-col gap-6 overflow-auto">
       <Card className="border-hairline p-6">
@@ -93,9 +106,14 @@ const DiagramPanel = ({ reactFlow, generatedReport }: DiagramPanelProps) => {
       </Card>
       {generatedReport ? (
         <Card className="border-hairline p-6">
-          <p className="text-[21px] font-semibold tracking-[0.231px]">
-            Generated SQL
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-[21px] font-semibold tracking-[0.231px]">
+              Generated SQL
+            </p>
+            <Button variant="secondary" size="sm" onClick={downloadSql}>
+              Download SQL
+            </Button>
+          </div>
           <pre className="mt-4 whitespace-pre-wrap rounded-md bg-parchment p-4 text-[12px] text-ink-muted">
             {generatedReport}
           </pre>
