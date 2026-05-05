@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import {
   Panel,
   PanelGroup,
@@ -8,6 +8,8 @@ import ActionBar from "@/components/analyzer/ActionBar";
 import DiagramPanel from "@/components/analyzer/DiagramPanel";
 import ObservationList from "@/components/analyzer/ObservationList";
 import { useAnalyzerStore } from "@/store/analyzerStore";
+import { useAuthStore } from "@/store/authStore";
+import { refineAnalysis } from "@/services/analyzerService";
 import type { Observation } from "@/types/analyzer";
 
 const severityRank: Record<string, number> = {
@@ -26,7 +28,15 @@ const SplitPaneViewer = () => {
     setGeneratedReport,
     generatedReport,
     reset,
+    text,
+    normalizationLevel,
+    setResult,
+    setLoading,
+    setError,
+    clearSelections,
   } = useAnalyzerStore();
+
+  const token = useAuthStore((state) => state.token);
 
   const observations = useMemo(() => {
     if (!result) {
@@ -42,22 +52,48 @@ const SplitPaneViewer = () => {
       });
   }, [result]);
 
-  const handleGenerate = () => {
-    if (!result) {
+  const handleToggle = useCallback(
+    (id: string) => {
+      toggleObservation(id);
+    },
+    [toggleObservation]
+  );
+
+  const handleGenerate = async () => {
+    if (!result || !token) {
       return;
     }
 
-    const selected = observations.filter((observation) =>
-      selectedObservationIds.includes(observation.id)
-    );
-    const sql = selected
-      .map((observation) => observation.proposedFixSql)
-      .filter(Boolean)
-      .join("\n\n");
+    const selectedFixes = observations
+      .filter((obs) => selectedObservationIds.includes(obs.id))
+      .map((obs) => obs.proposedFixSql)
+      .filter(Boolean);
 
-    setGeneratedReport(sql);
-    if (sql) {
-      void navigator.clipboard.writeText(sql);
+    if (selectedFixes.length === 0) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await refineAnalysis(
+        text,
+        selectedFixes,
+        result.observations,
+        normalizationLevel,
+        token
+      );
+      setResult(response);
+      clearSelections();
+
+      const sql = selectedFixes.join("\n\n");
+      setGeneratedReport(sql);
+      if (sql) {
+        void navigator.clipboard.writeText(sql);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Refinement failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -89,7 +125,7 @@ const SplitPaneViewer = () => {
                 <ObservationList
                   observations={observations}
                   selectedIds={selectedObservationIds}
-                  onToggle={toggleObservation}
+                  onToggle={handleToggle}
                 />
               </div>
             </div>

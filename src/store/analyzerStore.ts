@@ -1,9 +1,10 @@
 import { create } from "zustand";
-import type { AnalyzerResponse } from "@/types/analyzer";
+import type { AnalyzerResponse, NormalizationLevel } from "@/types/analyzer";
 
 interface AnalyzerState {
   text: string;
   file: File | null;
+  normalizationLevel: NormalizationLevel;
   result: AnalyzerResponse | null;
   selectedObservationIds: string[];
   generatedReport: string;
@@ -11,6 +12,7 @@ interface AnalyzerState {
   error: string | null;
   setText: (text: string) => void;
   setFile: (file: File | null) => void;
+  setNormalizationLevel: (level: NormalizationLevel) => void;
   setResult: (result: AnalyzerResponse | null) => void;
   setGeneratedReport: (report: string) => void;
   toggleObservation: (id: string) => void;
@@ -23,6 +25,7 @@ interface AnalyzerState {
 export const useAnalyzerStore = create<AnalyzerState>((set) => ({
   text: "",
   file: null,
+  normalizationLevel: "3NF",
   result: null,
   selectedObservationIds: [],
   generatedReport: "",
@@ -30,6 +33,7 @@ export const useAnalyzerStore = create<AnalyzerState>((set) => ({
   error: null,
   setText: (text) => set({ text }),
   setFile: (file) => set({ file }),
+  setNormalizationLevel: (normalizationLevel) => set({ normalizationLevel }),
   setResult: (result) => set({ result }),
   setGeneratedReport: (generatedReport) => set({ generatedReport }),
   toggleObservation: (id) =>
@@ -45,6 +49,7 @@ export const useAnalyzerStore = create<AnalyzerState>((set) => ({
     set({
       text: "",
       file: null,
+      normalizationLevel: "3NF",
       result: null,
       selectedObservationIds: [],
       generatedReport: "",

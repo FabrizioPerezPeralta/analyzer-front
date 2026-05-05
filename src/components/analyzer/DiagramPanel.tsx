@@ -24,19 +24,71 @@ const DiagramPanel = ({ reactFlow, generatedReport }: DiagramPanelProps) => {
   const edges = useMemo<Edge[]>(() => reactFlow?.edges ?? [], [reactFlow?.edges]);
   const hasDiagram = nodes.length > 0 || edges.length > 0;
 
+  const exportToMermaid = () => {
+    if (!hasDiagram) return;
+
+    let mermaidContent = "graph TD\n";
+
+    nodes.forEach((node) => {
+      const label = node.data.label?.replace(/"/g, "'") || node.id;
+      mermaidContent += `  ${node.id}["${label}"]\n`;
+    });
+
+    edges.forEach((edge) => {
+      if (edge.label) {
+        mermaidContent += `  ${edge.source} -->|${edge.label}| ${edge.target}\n`;
+      } else {
+        mermaidContent += `  ${edge.source} --> ${edge.target}\n`;
+      }
+    });
+
+    const blob = new Blob([mermaidContent], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "diagram.mermaid";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadSql = () => {
+    if (!generatedReport) return;
+    const blob = new Blob([generatedReport], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "fixes.sql";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex h-full flex-col gap-6 overflow-auto">
       <Card className="border-hairline p-6">
         <div className="flex items-center justify-between">
           <p className="text-[21px] font-semibold tracking-[0.231px]">ER Diagram</p>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setIsModalOpen(true)}
-            disabled={!hasDiagram}
-          >
-            View fullscreen
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={exportToMermaid}
+              disabled={!hasDiagram}
+            >
+              Export Mermaid
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsModalOpen(true)}
+              disabled={!hasDiagram}
+            >
+              View fullscreen
+            </Button>
+          </div>
         </div>
         <div className="mt-6 h-[360px] overflow-hidden rounded-md border border-hairline bg-parchment">
           {hasDiagram ? (
@@ -54,9 +106,14 @@ const DiagramPanel = ({ reactFlow, generatedReport }: DiagramPanelProps) => {
       </Card>
       {generatedReport ? (
         <Card className="border-hairline p-6">
-          <p className="text-[21px] font-semibold tracking-[0.231px]">
-            Generated SQL
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-[21px] font-semibold tracking-[0.231px]">
+              Generated SQL
+            </p>
+            <Button variant="secondary" size="sm" onClick={downloadSql}>
+              Download SQL
+            </Button>
+          </div>
           <pre className="mt-4 whitespace-pre-wrap rounded-md bg-parchment p-4 text-[12px] text-ink-muted">
             {generatedReport}
           </pre>
@@ -74,9 +131,19 @@ const DiagramPanel = ({ reactFlow, generatedReport }: DiagramPanelProps) => {
                   Pan, zoom, and inspect relationships.
                 </p>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>
-                Close
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={exportToMermaid}
+                  disabled={!hasDiagram}
+                >
+                  Export Mermaid
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>
+                  Close
+                </Button>
+              </div>
             </div>
             <div className="flex-1 bg-parchment">
               <ReactFlow nodes={nodes} edges={edges} fitView>
